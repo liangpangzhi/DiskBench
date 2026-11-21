@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disk Bench 二次开发 · 坏道屏蔽功能预览</title>
+<style>
+  :root{--bg:#eef1f5;--surface:#fff;--text:#27303b;--muted:#5b6776;--line:#dde3ea;--accent:#426b9a;--danger:#c0392b}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text);padding:32px 20px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:22px;line-height:1.7}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 4px 18px #25344c0a}
+  h2{font-size:14px;margin:0 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(32,1fr);gap:2px;max-width:560px}
+  .cell{aspect-ratio:1;border-radius:2px;background:#92e095}
+  .cell.slow{background:#f8e490}
+  .cell.sev{background:#fcd52c}
+  .cell.err{background:#c24a51}
+  .cell.masked{background:repeating-linear-gradient(45deg,#c2c8d1 0 3px,#e6e9ee 3px 6px);box-shadow:inset 0 0 0 1px rgba(24,26,31,.14)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:12px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .panel{border:1px solid var(--line);border-radius:12px;background:#f7f9fb;overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:12px;font-weight:700}
+  .panel-head .count{flex:1;font-weight:400;color:var(--muted);font-size:11px}
+  .panel-body{padding:10px 12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.7}
+  .mask-list{list-style:none;margin:6px 0;padding:0;display:grid;gap:4px}
+  .mask-list li{display:flex;align-items:center;gap:8px;padding:5px 8px;background:#fff;border-radius:7px;font-family:Consolas,monospace;font-size:11px;color:var(--text)}
+  .mask-list .rs{flex:1}
+  .mask-list .tag{font-family:inherit;color:#7a8492;font-size:10px;text-transform:uppercase}
+  .del{width:22px;height:22px;border:0;border-radius:6px;background:#f3e6e6;color:var(--danger);cursor:pointer;font-size:13px;line-height:1}
+  .btn{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:4px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--text);font-size:11px;cursor:pointer}
+  .btn.danger{color:var(--danger);border-color:#e0c4c4}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+  .flow span{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+  .flow i{font-style:normal;color:var(--accent)}
+  code{background:#eef1f5;padding:2px 6px;border-radius:5px;font-size:12px}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}
+  .ok{color:#1a9d5a;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Disk Bench 二次开发 · 坏道屏蔽功能</h1>
+  <p class="sub">把扫描中确认的坏道记录为屏蔽表，扫描时跳过这些区间，避免反复读取坏道触发磁盘错误恢复（可能长时间卡住）。以下是界面效果与实际接口返回。</p>
+
+  <div class="card">
+    <h2>① 扫描块图中的“已屏蔽”区域</h2>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i style="background:#92e095"></i>正常</span>
+      <span><i style="background:#f8e490"></i>一般</span>
+      <span><i style="background:#fcd52c"></i>严重</span>
+      <span><i style="background:#c24a51"></i>损坏</span>
+      <span><i style="background:repeating-linear-gradient(45deg,#c2c8d1 0 3px,#e6e9ee 3px 6px)"></i>已屏蔽（跳过未读）</span>
+    </div>
+    <p class="note">屏蔽区以灰白斜纹表示：本次扫描刻意跳过，不计入“已测试”，也不产生读错误。</p>
+  </div>
+
+  <div class="card">
+    <h2>② 磁盘详情 · 坏道屏蔽管理</h2>
+    <div class="panel">
+      <div class="panel-head"><span>🛡 坏道屏蔽</span><span class="count">2 个区间 · 7.5 KB</span><span style="color:#7a8492">▾</span></div>
+      <div class="panel-body">
+        <div>屏蔽记录仅让本应用扫描时跳过这些区间，不修改磁盘或文件系统，也不会修复坏道。</div>
+        <ul class="mask-list">
+          <li><span class="rs">LBA 2,679,904 · 4 KB</span><span class="tag">unreadable</span><button class="del" title="删除">✕</button></li>
+          <li><span class="rs">LBA 8,192,000 · 3.5 KB</span><span class="tag">device_error</span><button class="del" title="删除">✕</button></li>
+        </ul>
+        <div style="display:flex;gap:8px"><button class="btn">刷新</button><button class="btn danger">清空屏蔽</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>③ 异常明细 · 一键屏蔽</h2>
+    <p class="note">扫描结果的“异常明细”中新增 <b>屏蔽严重坏道</b> 按钮，一键把不可读/设备错误坏道加入屏蔽表。</p>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn">🛡 屏蔽严重坏道</button>
+      <span class="ok">✓ 已加入屏蔽表 1 个区间，可在磁盘详情的“坏道屏蔽”中查看</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>④ 实际接口返回（mock 服务实测）</h2>
+    <div class="note">
+      <code>GET /api/blocklist?device=/dev/sda</code> → <code>{"blocklist":{"ranges":[]}}</code><br>
+      <code>POST /api/blocklist</code> 添加 2 区间 → 返回合并后的 <code>ranges</code><br>
+      <code>DELETE /api/blocklist?device=/dev/sda&amp;offset=0&amp;length=4096</code> → 删除单区间<br>
+      <code>POST /api/jobs/{id}/mask {"filter":"severe"}</code> → <code>{"added":1,"blocklist":{...}}</code><br>
+      安全校验：写操作缺少 <code>X-Requested-With: DiskBench</code> → <b>403</b>；非法设备路径 → <b>400</b>。
+    </div>
+    <div class="flow"><span>扫描异常记录</span><i>→</i><span>一键屏蔽 / 手动添加</span><i>→</i><span>按磁盘持久化屏蔽表</span><i>→</i><span>扫描时跳过</span><i>→</i><span>块图标记“已屏蔽”</span></div>
+  </div>
+</div>
+<script>
+  // 渲染一个示意块图：大部分正常，夹带慢/严重/损坏，以及两段已屏蔽斜纹。
+  const grid = document.getElementById('grid');
+  const maskedRanges = [[8, 16], [37, 44], [58, 70]];
+  for (let i = 0; i < 32 * 20; i++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    const row = Math.floor(i / 32);
+    if (maskedRanges.some(([s, e]) => i >= s && i <= e)) d.classList.add('masked');
+    else if (i === 140 || i === 141) d.classList.add('sev');
+    else if (i === 200) d.classList.add('err');
+    else if (i % 23 === 0) d.classList.add('slow');
+    grid.appendChild(d);
+  }
+</script>
+</body>
+</html>

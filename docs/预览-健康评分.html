@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disk Bench 二次开发 · 健康评分功能预览</title>
+<style>
+  :root{--bg:#eef1f5;--surface:#fff;--text:#27303b;--muted:#5b6776;--line:#dde3ea;--accent:#426b9a}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text);padding:32px 20px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px;line-height:1.7}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 4px 18px #25344c0a}
+  .disk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .disk-name{font-weight:700;font-size:15px}
+  .disk-meta{color:var(--muted);font-size:12px;margin-top:3px}
+  .hs{display:flex;align-items:center;gap:11px;margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f7f9fb}
+  .ring{width:52px;height:52px;flex:0 0 52px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--c) calc(var(--s)*1%),#e3e8ee 0)}
+  .ring::before{content:"";position:absolute;inset:5px;border-radius:50%;background:#fff}
+  .ring b{position:relative;font-size:16px;font-weight:800;color:var(--c)}
+  .grade{font-weight:700;font-size:13px}
+  .grade small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+  .reasons{margin:12px 0 0;padding:10px 14px;background:#fbfcfd;border:1px solid var(--line);border-radius:10px;font-size:12px;line-height:1.8}
+  .reasons ul{margin:6px 0;padding-left:18px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+  .tA{background:#e3f4ea;color:#1a9d5a}.tB{background:#e8f5ea;color:#3aa856}.tC{background:#fdf1e2;color:#c07a20}.tD{background:#fdeae2;color:#d0622c}.tF{background:#fde6e4;color:#c8342b}.tU{background:#eef0f3;color:#7a8492}
+  code{background:#eef1f5;padding:2px 6px;border-radius:5px;font-size:12px}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+  .flow span{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+  .flow i{font-style:normal;color:var(--accent)}
+  .note{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Disk Bench 二次开发 · 磁盘健康评分功能</h1>
+  <p class="sub">以下为新增功能在真实运行中的效果（数据来自后端 mock 服务 <code>/api/disks</code> 的 <code>healthScores</code> 字段实测返回）。评分基于 SMART 关键属性，仅供参考，不预测剩余寿命。</p>
+
+  <div class="card">
+    <div class="disk-head"><div><div class="disk-name">Samsung SSD 990 PRO 2TB</div><div class="disk-meta">/dev/nvme0n1 · NVMe · 系统盘</div></div><span class="tag tA">A 优秀</span></div>
+    <div class="hs"><div class="ring" style="--c:#1a9d5a;--s:100"><b>100</b></div><div class="grade">健康评分 A · 优秀<small>点击查看评分依据</small></div></div>
+    <div class="reasons">评分 <b>100/100</b>（A · 优秀）<ul><li>关键 SMART 属性未见异常</li></ul></div>
+  </div>
+
+  <div class="card">
+    <div class="disk-head"><div><div class="disk-name">WDC WD120EFBX-68B0EN0</div><div class="disk-meta">/dev/sda · SATA HDD · /vol1</div></div><span class="tag tA">A 优秀</span></div>
+    <div class="hs"><div class="ring" style="--c:#1a9d5a;--s:100"><b>100</b></div><div class="grade">健康评分 A · 优秀<small>点击查看评分依据</small></div></div>
+    <div class="reasons">评分 <b>100/100</b>（A · 优秀）<ul><li>关键 SMART 属性未见异常</li></ul></div>
+  </div>
+
+  <div class="card">
+    <div class="disk-head"><div><div class="disk-name">Samsung SSD 870 EVO 4TB</div><div class="disk-meta">/dev/sdb · SATA SSD</div></div><span class="tag tC">C 注意</span></div>
+    <div class="hs"><div class="ring" style="--c:#d98324;--s:73"><b>73</b></div><div class="grade">健康评分 C · 注意<small>点击查看评分依据</small></div></div>
+    <div class="reasons">评分 <b>73/100</b>（C · 注意）<ul><li>待处理扇区(ATA 197) 3（-9）</li><li>报告不可纠正(ATA 187) 1（-10）</li><li>重映射扇区(ATA 5) 2（-8）</li></ul><div class="note">评分仅供参考，不能预测剩余寿命或替代数据备份。</div></div>
+  </div>
+
+  <div class="card">
+    <div class="disk-name" style="margin-bottom:8px">功能数据流</div>
+    <div class="flow"><span>SMART 属性</span><i>→</i><span>scoreDiskHealth() 评分引擎</span><i>→</i><span>/api/disks · healthScores</span><i>→</i><span>前端评分徽章</span><i>→</i><span>展开查看依据</span></div>
+    <div class="note">后端：新增 <code>backend/health_score.go</code>（纯函数 + 单元测试），修改 <code>server.go</code> 的 /api/disks 响应；前端：新增评分徽章组件与样式，解析 healthScores 字段。全部向后兼容旧客户端。</div>
+  </div>
+</div>
+</body>
+</html>
